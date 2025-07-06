@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import ChatWindow from "../components/ChatWindow";
 
 interface Profile {
   id: string;
@@ -37,6 +38,7 @@ const Home = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showMatches, setShowMatches] = useState(false);
+  const [chatProfile, setChatProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
     if (!profile) {
@@ -233,7 +235,7 @@ const Home = () => {
                           Matched on {new Date(match.created_at).toLocaleDateString()}
                         </p>
                       </div>
-                      <Button size="sm">
+                      <Button size="sm" onClick={() => setChatProfile(match.profile)}>
                         <MessageCircle size={16} className="mr-1" />
                         Chat
                       </Button>
@@ -335,6 +337,21 @@ const Home = () => {
           </div>
         )}
       </div>
+
+      {chatProfile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="w-full max-w-md h-[600px]">
+            <ChatWindow
+              chatProfile={{
+                id: chatProfile.id,
+                username: chatProfile.username,
+                profile_image: chatProfile.profile_image,
+              }}
+              onBack={() => setChatProfile(null)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
