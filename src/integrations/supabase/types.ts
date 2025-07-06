@@ -9,7 +9,111 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      likes: {
+        Row: {
+          created_at: string | null
+          from_user: string | null
+          id: number
+          to_user: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          from_user?: string | null
+          id?: never
+          to_user?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          from_user?: string | null
+          id?: never
+          to_user?: string | null
+        }
+        Relationships: []
+      }
+      matches: {
+        Row: {
+          created_at: string | null
+          id: number
+          user1: string | null
+          user2: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: never
+          user1?: string | null
+          user2?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: never
+          user1?: string | null
+          user2?: string | null
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: number
+          receiver: string | null
+          sender: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: never
+          receiver?: string | null
+          sender?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: never
+          receiver?: string | null
+          sender?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          bio: string | null
+          created_at: string | null
+          gender: string | null
+          id: string
+          interests: string[] | null
+          looking_for: string | null
+          profile_image: string | null
+          updated_at: string | null
+          username: string
+          year_of_study: number | null
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string | null
+          gender?: string | null
+          id: string
+          interests?: string[] | null
+          looking_for?: string | null
+          profile_image?: string | null
+          updated_at?: string | null
+          username: string
+          year_of_study?: number | null
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string | null
+          gender?: string | null
+          id?: string
+          interests?: string[] | null
+          looking_for?: string | null
+          profile_image?: string | null
+          updated_at?: string | null
+          username?: string
+          year_of_study?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
