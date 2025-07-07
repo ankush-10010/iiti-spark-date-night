@@ -34,6 +34,7 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  console.log('AuthProvider initializing');
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -43,6 +44,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const fetchProfile = async (userId: string) => {
     if (!userId) return;
     
+    console.log('fetchProfile called for userId:', userId);
     setProfileLoading(true);
     try {
       const { data, error } = await supabase
@@ -56,10 +58,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
 
+      console.log('Profile fetched:', data);
       setProfile(data || null);
     } catch (error) {
       console.error('Error fetching profile:', error);
     } finally {
+      console.log('Setting profileLoading to false');
       setProfileLoading(false);
     }
   };
@@ -71,8 +75,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
+    console.log('AuthProvider useEffect running');
     const getSession = async () => {
+      console.log('Getting initial session');
       const { data: { session } } = await supabase.auth.getSession();
+      console.log('Initial session:', { user: !!session?.user, userId: session?.user?.id });
       setSession(session);
       setUser(session?.user ?? null);
       
@@ -80,17 +87,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         await fetchProfile(session.user.id);
       }
       
+      console.log('Setting loading to false');
       setLoading(false);
     };
 
     getSession();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state change:', event, { user: !!session?.user, userId: session?.user?.id });
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        await fetchProfile(session.user.id);
+        // Use setTimeout to avoid potential deadlocks in auth callback
+        setTimeout(() => {
+          fetchProfile(session.user.id);
+        }, 0);
       } else {
         setProfile(null);
       }

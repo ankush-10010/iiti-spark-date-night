@@ -5,6 +5,8 @@ const ProtectedRoute = () => {
   const { user, profile, loading, profileLoading } = useAuth();
   const location = useLocation();
 
+  console.log('ProtectedRoute render:', { user: !!user, profile: !!profile, loading, profileLoading, pathname: location.pathname });
+
   if (loading || profileLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
