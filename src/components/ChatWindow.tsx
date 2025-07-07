@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -33,6 +33,7 @@ const ChatWindow = ({ chatProfile, onBack }: ChatWindowProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -100,10 +101,11 @@ const ChatWindow = ({ chatProfile, onBack }: ChatWindowProps) => {
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !user) return;
+    if (!newMessage.trim() || !user || sending) return;
 
     const messageContent = newMessage.trim();
     setNewMessage("");
+    setSending(true);
 
     try {
       const { error } = await supabase
@@ -124,6 +126,8 @@ const ChatWindow = ({ chatProfile, onBack }: ChatWindowProps) => {
       console.error('Error:', error);
       toast.error('An error occurred');
       setNewMessage(messageContent); // Restore message if failed
+    } finally {
+      setSending(false);
     }
   };
 
@@ -140,36 +144,49 @@ const ChatWindow = ({ chatProfile, onBack }: ChatWindowProps) => {
 
   if (loading) {
     return (
-      <Card className="h-full card-gradient">
-        <CardContent className="flex items-center justify-center h-full">
+      <div className="flex flex-col h-full bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 rounded-2xl shadow-xl">
+        <div className="flex items-center justify-center h-full">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className="h-full card-gradient flex flex-col">
-      <CardHeader className="border-b">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={onBack}>
-            <ArrowLeft size={20} />
-          </Button>
-          <Avatar className="h-10 w-10">
-            <AvatarImage src={chatProfile.profile_image} />
-            <AvatarFallback>{chatProfile.username[0]}</AvatarFallback>
-          </Avatar>
-          <CardTitle className="text-lg">{chatProfile.username}</CardTitle>
+    <div className="flex flex-col h-full bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 rounded-2xl shadow-xl overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center gap-3 p-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700">
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={onBack}
+          className="hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full p-2"
+        >
+          <ArrowLeft size={20} />
+        </Button>
+        <Avatar className="h-10 w-10 ring-2 ring-primary/20">
+          <AvatarImage src={chatProfile.profile_image} />
+          <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-semibold">
+            {chatProfile.username[0]}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex-1">
+          <h3 className="font-semibold text-slate-900 dark:text-slate-100">{chatProfile.username}</h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Online</p>
         </div>
-      </CardHeader>
+      </div>
 
-      <CardContent className="flex-1 flex flex-col p-0">
-        {/* Messages */}
-        <ScrollArea className="flex-1 p-4">
+      {/* Messages Area */}
+      <div className="flex-1 flex flex-col min-h-0">
+        <ScrollArea className="flex-1 px-4 py-2">
           <div className="space-y-4">
             {messages.length === 0 ? (
-              <div className="text-center text-muted-foreground py-8">
-                <p>No messages yet. Start the conversation!</p>
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-accent/20 rounded-full flex items-center justify-center mb-4">
+                  <Send className="w-8 h-8 text-primary" />
+                </div>
+                <p className="text-slate-600 dark:text-slate-400 font-medium">No messages yet</p>
+                <p className="text-sm text-slate-500 dark:text-slate-500">Start the conversation!</p>
               </div>
             ) : (
               messages.map((message) => (
@@ -178,18 +195,18 @@ const ChatWindow = ({ chatProfile, onBack }: ChatWindowProps) => {
                   className={`flex ${message.sender === user?.id ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[70%] p-3 rounded-lg ${
+                    className={`max-w-[75%] sm:max-w-[70%] ${
                       message.sender === user?.id
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted'
-                    }`}
+                        ? 'bg-gradient-to-r from-primary to-primary/90 text-white rounded-2xl rounded-br-md'
+                        : 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 rounded-2xl rounded-bl-md shadow-sm border border-slate-200 dark:border-slate-600'
+                    } px-4 py-3 break-words`}
                   >
-                    <p className="text-sm">{message.content}</p>
+                    <p className="text-sm leading-relaxed">{message.content}</p>
                     <p
                       className={`text-xs mt-1 ${
                         message.sender === user?.id
-                          ? 'text-primary-foreground/70'
-                          : 'text-muted-foreground'
+                          ? 'text-white/70'
+                          : 'text-slate-500 dark:text-slate-400'
                       }`}
                     >
                       {formatTime(message.created_at)}
@@ -201,23 +218,35 @@ const ChatWindow = ({ chatProfile, onBack }: ChatWindowProps) => {
             <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
+      </div>
 
-        {/* Message Input */}
-        <div className="border-t p-4">
-          <form onSubmit={sendMessage} className="flex gap-2">
+      {/* Message Input */}
+      <div className="p-4 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-t border-slate-200 dark:border-slate-700">
+        <form onSubmit={sendMessage} className="flex gap-3 items-end">
+          <div className="flex-1">
             <Input
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               placeholder="Type a message..."
-              className="flex-1"
+              className="bg-slate-100 dark:bg-slate-700 border-slate-200 dark:border-slate-600 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none min-h-[44px] max-h-32"
+              disabled={sending}
             />
-            <Button type="submit" size="sm" disabled={!newMessage.trim()}>
+          </div>
+          <Button 
+            type="submit" 
+            size="sm" 
+            disabled={!newMessage.trim() || sending}
+            className="bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-white rounded-xl px-4 py-3 h-[44px] shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {sending ? (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+            ) : (
               <Send size={16} />
-            </Button>
-          </form>
-        </div>
-      </CardContent>
-    </Card>
+            )}
+          </Button>
+        </form>
+      </div>
+    </div>
   );
 };
 
