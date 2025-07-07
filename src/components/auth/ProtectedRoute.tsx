@@ -25,6 +25,11 @@ const ProtectedRoute = () => {
     return <Navigate to="/create-profile" />;
   }
 
+  // If user has a profile but is trying to access create-profile, redirect to home
+  if (profile && location.pathname === '/create-profile') {
+    return <Navigate to="/" />;
+  }
+
   return <Outlet />;
 };
 
