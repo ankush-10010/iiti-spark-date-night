@@ -8,7 +8,7 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import ChatWindow from "../components/ChatWindow";
 
 interface Profile {
@@ -33,12 +33,17 @@ interface Match {
 const Home = () => {
   const { user, profile } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showMatches, setShowMatches] = useState(false);
   const [chatProfile, setChatProfile] = useState<Profile | null>(null);
+
+  // Get chat state from URL parameters
+  const chatUserId = searchParams.get('chat');
+  const view = searchParams.get('view') || 'discover';
 
   useEffect(() => {
     if (!profile) {
@@ -49,6 +54,23 @@ const Home = () => {
     fetchProfiles();
     fetchMatches();
   }, [profile, navigate]);
+
+  // Handle URL-based chat state
+  useEffect(() => {
+    if (chatUserId && matches.length > 0) {
+      const matchedProfile = matches.find(match => match.profile.id === chatUserId)?.profile;
+      if (matchedProfile) {
+        setChatProfile(matchedProfile);
+      }
+    } else if (!chatUserId) {
+      setChatProfile(null);
+    }
+  }, [chatUserId, matches]);
+
+  // Handle URL-based view state
+  useEffect(() => {
+    setShowMatches(view === 'matches');
+  }, [view]);
 
   const fetchProfiles = async () => {
     if (!user) return;
@@ -167,6 +189,34 @@ const Home = () => {
     setCurrentIndex(prev => prev + 1);
   };
 
+  const handleShowMatches = (show: boolean) => {
+    setShowMatches(show);
+    const newSearchParams = new URLSearchParams(searchParams);
+    if (show) {
+      newSearchParams.set('view', 'matches');
+    } else {
+      newSearchParams.set('view', 'discover');
+    }
+    // Remove chat parameter when switching views
+    newSearchParams.delete('chat');
+    setSearchParams(newSearchParams);
+  };
+
+  const handleOpenChat = (profile: Profile) => {
+    setChatProfile(profile);
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.set('chat', profile.id);
+    newSearchParams.set('view', 'matches');
+    setSearchParams(newSearchParams);
+  };
+
+  const handleCloseChat = () => {
+    setChatProfile(null);
+    const newSearchParams = new URLSearchParams(searchParams);
+    newSearchParams.delete('chat');
+    setSearchParams(newSearchParams);
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate('/landing');
@@ -182,6 +232,37 @@ const Home = () => {
 
   const currentProfile = profiles[currentIndex];
 
+  // If chat is open, show full-screen chat
+  if (chatProfile) {
+    return (
+      <div className="min-h-screen bg-background">
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b">
+          <div className="flex items-center gap-2">
+            <Heart className="text-primary" size={24} />
+            <span className="font-bold gradient-text">Campus Connect</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={handleLogout}>
+              <LogOut size={20} />
+            </Button>
+          </div>
+        </div>
+
+        <div className="container mx-auto p-4 h-[calc(100vh-80px)]">
+          <ChatWindow
+            chatProfile={{
+              id: chatProfile.id,
+              username: chatProfile.username,
+              profile_image: chatProfile.profile_image,
+            }}
+            onBack={handleCloseChat}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -194,7 +275,7 @@ const Home = () => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setShowMatches(!showMatches)}
+            onClick={() => handleShowMatches(!showMatches)}
             className="relative"
           >
             <MessageCircle size={20} />
@@ -235,7 +316,7 @@ const Home = () => {
                           Matched on {new Date(match.created_at).toLocaleDateString()}
                         </p>
                       </div>
-                      <Button size="sm" onClick={() => setChatProfile(match.profile)}>
+                      <Button size="sm" onClick={() => handleOpenChat(match.profile)}>
                         <MessageCircle size={16} className="mr-1" />
                         Chat
                       </Button>
@@ -337,21 +418,6 @@ const Home = () => {
           </div>
         )}
       </div>
-
-      {chatProfile && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="w-full max-w-md h-[600px]">
-            <ChatWindow
-              chatProfile={{
-                id: chatProfile.id,
-                username: chatProfile.username,
-                profile_image: chatProfile.profile_image,
-              }}
-              onBack={() => setChatProfile(null)}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 };
