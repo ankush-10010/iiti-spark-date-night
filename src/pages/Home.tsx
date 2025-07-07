@@ -244,7 +244,7 @@ const Home = () => {
     return (
       <div className="min-h-screen bg-background flex">
         {/* Left Sidebar - Matches List */}
-        <div className="w-80 bg-card border-r border-border flex flex-col">
+        <div className="w-80 bg-card border-r border-border flex flex-col h-screen">
           {/* Header */}
           <div className="p-4 border-b border-border">
             <div className="flex items-center justify-between mb-4">
@@ -333,7 +333,7 @@ const Home = () => {
         </div>
 
         {/* Right Side - Chat Window */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col h-screen">
           {chatProfile ? (
             <ChatWindow
               chatProfile={{
