@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -37,7 +38,8 @@ const ChatWindow = ({ chatProfile, onBack }: ChatWindowProps) => {
   useEffect(() => {
     if (user && chatProfile) {
       fetchMessages();
-      subscribeToMessages();
+      const cleanup = subscribeToMessages();
+      return cleanup;
     }
   }, [user, chatProfile]);
 
@@ -72,18 +74,21 @@ const ChatWindow = ({ chatProfile, onBack }: ChatWindowProps) => {
     if (!user) return;
 
     const channel = supabase
-      .channel('messages')
+      .channel(`messages_${user.id}_${chatProfile.id}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'messages',
-          filter: `or(and(sender.eq.${user.id},receiver.eq.${chatProfile.id}),and(sender.eq.${chatProfile.id},receiver.eq.${user.id}))`
+          table: 'messages'
         },
         (payload) => {
           const newMessage = payload.new as Message;
-          setMessages(prev => [...prev, newMessage]);
+          // Only add message if it's between current user and chat profile
+          if ((newMessage.sender === user.id && newMessage.receiver === chatProfile.id) ||
+              (newMessage.sender === chatProfile.id && newMessage.receiver === user.id)) {
+            setMessages(prev => [...prev, newMessage]);
+          }
         }
       )
       .subscribe();
@@ -160,40 +165,42 @@ const ChatWindow = ({ chatProfile, onBack }: ChatWindowProps) => {
 
       <CardContent className="flex-1 flex flex-col p-0">
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.length === 0 ? (
-            <div className="text-center text-muted-foreground py-8">
-              <p>No messages yet. Start the conversation!</p>
-            </div>
-          ) : (
-            messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${message.sender === user?.id ? 'justify-end' : 'justify-start'}`}
-              >
+        <ScrollArea className="flex-1 p-4">
+          <div className="space-y-4">
+            {messages.length === 0 ? (
+              <div className="text-center text-muted-foreground py-8">
+                <p>No messages yet. Start the conversation!</p>
+              </div>
+            ) : (
+              messages.map((message) => (
                 <div
-                  className={`max-w-[70%] p-3 rounded-lg ${
-                    message.sender === user?.id
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted'
-                  }`}
+                  key={message.id}
+                  className={`flex ${message.sender === user?.id ? 'justify-end' : 'justify-start'}`}
                 >
-                  <p className="text-sm">{message.content}</p>
-                  <p
-                    className={`text-xs mt-1 ${
+                  <div
+                    className={`max-w-[70%] p-3 rounded-lg ${
                       message.sender === user?.id
-                        ? 'text-primary-foreground/70'
-                        : 'text-muted-foreground'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-muted'
                     }`}
                   >
-                    {formatTime(message.created_at)}
-                  </p>
+                    <p className="text-sm">{message.content}</p>
+                    <p
+                      className={`text-xs mt-1 ${
+                        message.sender === user?.id
+                          ? 'text-primary-foreground/70'
+                          : 'text-muted-foreground'
+                      }`}
+                    >
+                      {formatTime(message.created_at)}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ))
-          )}
-          <div ref={messagesEndRef} />
-        </div>
+              ))
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        </ScrollArea>
 
         {/* Message Input */}
         <div className="border-t p-4">
