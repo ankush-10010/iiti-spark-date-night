@@ -1,10 +1,12 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, X, MessageCircle, Settings, LogOut } from "lucide-react";
+import { Heart, X, MessageCircle, Settings, LogOut, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -40,6 +42,7 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [showMatches, setShowMatches] = useState(false);
   const [chatProfile, setChatProfile] = useState<Profile | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Get chat state from URL parameters
   const chatUserId = searchParams.get('chat');
@@ -222,6 +225,10 @@ const Home = () => {
     navigate('/landing');
   };
 
+  const filteredMatches = matches.filter(match =>
+    match.profile.username.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -232,37 +239,125 @@ const Home = () => {
 
   const currentProfile = profiles[currentIndex];
 
-  // If chat is open, show full-screen chat
-  if (chatProfile) {
+  // Telegram-style layout when matches view is active
+  if (showMatches) {
     return (
-      <div className="min-h-screen bg-background">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
-          <div className="flex items-center gap-2">
-            <Heart className="text-primary" size={24} />
-            <span className="font-bold gradient-text">Campus Connect</span>
+      <div className="min-h-screen bg-background flex">
+        {/* Left Sidebar - Matches List */}
+        <div className="w-80 bg-card border-r border-border flex flex-col">
+          {/* Header */}
+          <div className="p-4 border-b border-border">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Heart className="text-primary" size={24} />
+                <span className="font-bold gradient-text">Campus Connect</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={() => navigate('/settings')}>
+                  <Settings size={18} />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={handleLogout}>
+                  <LogOut size={18} />
+                </Button>
+              </div>
+            </div>
+            
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
+              <Input
+                placeholder="Search matches..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 bg-muted/50 border-0"
+              />
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={handleLogout}>
-              <LogOut size={20} />
+
+          {/* Navigation */}
+          <div className="flex border-b border-border">
+            <Button
+              variant={showMatches ? "default" : "ghost"}
+              className="flex-1 rounded-none"
+              onClick={() => handleShowMatches(true)}
+            >
+              <MessageCircle size={16} className="mr-2" />
+              Matches ({matches.length})
+            </Button>
+            <Button
+              variant={!showMatches ? "default" : "ghost"}
+              className="flex-1 rounded-none"
+              onClick={() => handleShowMatches(false)}
+            >
+              Discover
             </Button>
           </div>
+
+          {/* Matches List */}
+          <ScrollArea className="flex-1">
+            <div className="p-2">
+              {filteredMatches.length === 0 ? (
+                <div className="text-center py-12">
+                  <MessageCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">
+                    {searchQuery ? 'No matches found' : 'No matches yet. Keep swiping!'}
+                  </p>
+                </div>
+              ) : (
+                filteredMatches.map((match) => (
+                  <div
+                    key={match.id}
+                    onClick={() => handleOpenChat(match.profile)}
+                    className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${
+                      chatProfile?.id === match.profile.id ? 'bg-primary/10 border border-primary/20' : ''
+                    }`}
+                  >
+                    <Avatar className="h-12 w-12">
+                      <AvatarImage src={match.profile.profile_image} />
+                      <AvatarFallback>{match.profile.username[0]}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold truncate">{match.profile.username}</h3>
+                      <p className="text-sm text-muted-foreground truncate">
+                        Matched on {new Date(match.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    {chatProfile?.id === match.profile.id && (
+                      <div className="w-2 h-2 bg-primary rounded-full"></div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </ScrollArea>
         </div>
 
-        <div className="container mx-auto p-4 h-[calc(100vh-80px)]">
-          <ChatWindow
-            chatProfile={{
-              id: chatProfile.id,
-              username: chatProfile.username,
-              profile_image: chatProfile.profile_image,
-            }}
-            onBack={handleCloseChat}
-          />
+        {/* Right Side - Chat Window */}
+        <div className="flex-1 flex flex-col">
+          {chatProfile ? (
+            <ChatWindow
+              chatProfile={{
+                id: chatProfile.id,
+                username: chatProfile.username,
+                profile_image: chatProfile.profile_image,
+              }}
+              onBack={handleCloseChat}
+            />
+          ) : (
+            <div className="flex-1 flex items-center justify-center bg-muted/20">
+              <div className="text-center">
+                <MessageCircle className="mx-auto h-16 w-16 text-muted-foreground mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Select a chat to start messaging</h3>
+                <p className="text-muted-foreground">Choose from your matches on the left to begin a conversation</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );
   }
 
+  // Original discovery view
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -275,7 +370,7 @@ const Home = () => {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => handleShowMatches(!showMatches)}
+            onClick={() => handleShowMatches(true)}
             className="relative"
           >
             <MessageCircle size={20} />
@@ -295,128 +390,95 @@ const Home = () => {
       </div>
 
       <div className="container mx-auto p-4 max-w-md">
-        {showMatches ? (
-          /* Matches View */
-          <div className="space-y-4">
-            <h2 className="text-2xl font-bold text-center">Your Matches</h2>
-            {matches.length === 0 ? (
-              <p className="text-center text-muted-foreground">No matches yet. Keep swiping!</p>
-            ) : (
-              matches.map((match) => (
-                <Card key={match.id} className="card-gradient">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-4">
-                      <Avatar className="h-12 w-12">
-                        <AvatarImage src={match.profile.profile_image} />
-                        <AvatarFallback>{match.profile.username[0]}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <h3 className="font-semibold">{match.profile.username}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Matched on {new Date(match.created_at).toLocaleDateString()}
+        {/* Profile Discovery */}
+        <div className="relative h-[600px] flex items-center justify-center">
+          <AnimatePresence>
+            {currentProfile ? (
+              <motion.div
+                key={currentProfile.id}
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.8, opacity: 0, x: -300 }}
+                transition={{ duration: 0.3 }}
+                className="w-full max-w-sm"
+              >
+                <Card className="card-gradient overflow-hidden">
+                  <div className="aspect-square relative">
+                    {currentProfile.profile_image ? (
+                      <img
+                        src={currentProfile.profile_image}
+                        alt={currentProfile.username}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center">
+                        <Avatar className="h-24 w-24">
+                          <AvatarFallback className="text-2xl">
+                            {currentProfile.username[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                      </div>
+                    )}
+                  </div>
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      <div>
+                        <h2 className="text-2xl font-bold">{currentProfile.username}</h2>
+                        <p className="text-muted-foreground">
+                          Year {currentProfile.year_of_study} • Looking for {currentProfile.looking_for}
                         </p>
                       </div>
-                      <Button size="sm" onClick={() => handleOpenChat(match.profile)}>
-                        <MessageCircle size={16} className="mr-1" />
-                        Chat
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </div>
-        ) : (
-          /* Profile Discovery */
-          <div className="relative h-[600px] flex items-center justify-center">
-            <AnimatePresence>
-              {currentProfile ? (
-                <motion.div
-                  key={currentProfile.id}
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.8, opacity: 0, x: -300 }}
-                  transition={{ duration: 0.3 }}
-                  className="w-full max-w-sm"
-                >
-                  <Card className="card-gradient overflow-hidden">
-                    <div className="aspect-square relative">
-                      {currentProfile.profile_image ? (
-                        <img
-                          src={currentProfile.profile_image}
-                          alt={currentProfile.username}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/40 flex items-center justify-center">
-                          <Avatar className="h-24 w-24">
-                            <AvatarFallback className="text-2xl">
-                              {currentProfile.username[0]}
-                            </AvatarFallback>
-                          </Avatar>
+                      
+                      {currentProfile.bio && (
+                        <p className="text-sm">{currentProfile.bio}</p>
+                      )}
+                      
+                      {currentProfile.interests.length > 0 && (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">Interests</p>
+                          <div className="flex flex-wrap gap-2">
+                            {currentProfile.interests.map((interest, index) => (
+                              <Badge key={index} variant="secondary" className="text-xs">
+                                {interest}
+                              </Badge>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
-                    <CardContent className="p-6">
-                      <div className="space-y-4">
-                        <div>
-                          <h2 className="text-2xl font-bold">{currentProfile.username}</h2>
-                          <p className="text-muted-foreground">
-                            Year {currentProfile.year_of_study} • Looking for {currentProfile.looking_for}
-                          </p>
-                        </div>
-                        
-                        {currentProfile.bio && (
-                          <p className="text-sm">{currentProfile.bio}</p>
-                        )}
-                        
-                        {currentProfile.interests.length > 0 && (
-                          <div className="space-y-2">
-                            <p className="text-sm font-medium">Interests</p>
-                            <div className="flex flex-wrap gap-2">
-                              {currentProfile.interests.map((interest, index) => (
-                                <Badge key={index} variant="secondary" className="text-xs">
-                                  {interest}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ) : (
-                <div className="text-center space-y-4">
-                  <h2 className="text-2xl font-bold">No more profiles</h2>
-                  <p className="text-muted-foreground">Check back later for new connections!</p>
-                </div>
-              )}
-            </AnimatePresence>
-
-            {/* Action Buttons */}
-            {currentProfile && (
-              <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 flex gap-4 mb-4">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={handlePass}
-                  className="rounded-full h-14 w-14 p-0 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                >
-                  <X size={24} />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  onClick={handleLike}
-                  className="rounded-full h-14 w-14 p-0 border-primary text-primary hover:bg-primary hover:text-primary-foreground"
-                >
-                  <Heart size={24} />
-                </Button>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ) : (
+              <div className="text-center space-y-4">
+                <h2 className="text-2xl font-bold">No more profiles</h2>
+                <p className="text-muted-foreground">Check back later for new connections!</p>
               </div>
             )}
-          </div>
-        )}
+          </AnimatePresence>
+
+          {/* Action Buttons */}
+          {currentProfile && (
+            <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 flex gap-4 mb-4">
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={handlePass}
+                className="rounded-full h-14 w-14 p-0 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+              >
+                <X size={24} />
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={handleLike}
+                className="rounded-full h-14 w-14 p-0 border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+              >
+                <Heart size={24} />
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

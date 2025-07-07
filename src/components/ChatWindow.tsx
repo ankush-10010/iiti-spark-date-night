@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, ArrowLeft } from "lucide-react";
+import { Send, ArrowLeft, MoreVertical } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -144,7 +143,7 @@ const ChatWindow = ({ chatProfile, onBack }: ChatWindowProps) => {
 
   if (loading) {
     return (
-      <div className="flex flex-col h-full bg-gray-900 rounded-2xl shadow-xl">
+      <div className="flex flex-col h-full bg-background">
         <div className="flex items-center justify-center h-full">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
@@ -153,31 +152,34 @@ const ChatWindow = ({ chatProfile, onBack }: ChatWindowProps) => {
   }
 
   return (
-    <div className="flex flex-col h-full bg-gray-900 rounded-2xl shadow-xl overflow-hidden">
+    <div className="flex flex-col h-full bg-background">
       {/* Header */}
-      <div className="flex items-center gap-3 p-4 bg-gray-800/90 backdrop-blur-sm border-b border-gray-700">
+      <div className="flex items-center gap-3 p-4 bg-card border-b border-border">
         <Button 
           variant="ghost" 
           size="sm" 
           onClick={onBack}
-          className="hover:bg-gray-700 rounded-full p-2 text-gray-300 hover:text-white"
+          className="lg:hidden hover:bg-muted rounded-full p-2"
         >
           <ArrowLeft size={20} />
         </Button>
-        <Avatar className="h-10 w-10 ring-2 ring-primary/30">
+        <Avatar className="h-10 w-10">
           <AvatarImage src={chatProfile.profile_image} />
           <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white font-semibold">
             {chatProfile.username[0]}
           </AvatarFallback>
         </Avatar>
         <div className="flex-1">
-          <h3 className="font-semibold text-white">{chatProfile.username}</h3>
-          <p className="text-sm text-gray-400">Online</p>
+          <h3 className="font-semibold">{chatProfile.username}</h3>
+          <p className="text-sm text-muted-foreground">Online</p>
         </div>
+        <Button variant="ghost" size="sm" className="rounded-full p-2">
+          <MoreVertical size={20} />
+        </Button>
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 flex flex-col min-h-0 bg-gray-900">
+      <div className="flex-1 flex flex-col min-h-0">
         <ScrollArea className="flex-1 px-4 py-2">
           <div className="space-y-4">
             {messages.length === 0 ? (
@@ -185,8 +187,8 @@ const ChatWindow = ({ chatProfile, onBack }: ChatWindowProps) => {
                 <div className="w-16 h-16 bg-gradient-to-br from-primary/20 to-accent/20 rounded-full flex items-center justify-center mb-4">
                   <Send className="w-8 h-8 text-primary" />
                 </div>
-                <p className="text-gray-300 font-medium">No messages yet</p>
-                <p className="text-sm text-gray-500">Start the conversation!</p>
+                <p className="font-medium">No messages yet</p>
+                <p className="text-sm text-muted-foreground">Start the conversation!</p>
               </div>
             ) : (
               messages.map((message) => (
@@ -197,16 +199,16 @@ const ChatWindow = ({ chatProfile, onBack }: ChatWindowProps) => {
                   <div
                     className={`max-w-[75%] sm:max-w-[70%] ${
                       message.sender === user?.id
-                        ? 'bg-gradient-to-r from-pink-500 to-pink-400 text-white rounded-2xl rounded-br-md'
-                        : 'bg-gray-700 text-gray-100 rounded-2xl rounded-bl-md border border-gray-600'
+                        ? 'bg-primary text-primary-foreground rounded-2xl rounded-br-md'
+                        : 'bg-muted rounded-2xl rounded-bl-md'
                     } px-4 py-3 break-words`}
                   >
                     <p className="text-sm leading-relaxed">{message.content}</p>
                     <p
                       className={`text-xs mt-1 ${
                         message.sender === user?.id
-                          ? 'text-white/70'
-                          : 'text-gray-400'
+                          ? 'text-primary-foreground/70'
+                          : 'text-muted-foreground'
                       }`}
                     >
                       {formatTime(message.created_at)}
@@ -221,14 +223,14 @@ const ChatWindow = ({ chatProfile, onBack }: ChatWindowProps) => {
       </div>
 
       {/* Message Input */}
-      <div className="p-4 bg-gray-800/90 backdrop-blur-sm border-t border-gray-700">
+      <div className="p-4 bg-card border-t border-border">
         <form onSubmit={sendMessage} className="flex gap-3 items-end">
           <div className="flex-1">
             <Input
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               placeholder="Type a message..."
-              className="bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 rounded-xl px-4 py-3 focus:ring-2 focus:ring-primary/30 focus:border-primary resize-none min-h-[44px] max-h-32"
+              className="rounded-xl px-4 py-3 min-h-[44px] resize-none"
               disabled={sending}
             />
           </div>
@@ -236,7 +238,7 @@ const ChatWindow = ({ chatProfile, onBack }: ChatWindowProps) => {
             type="submit" 
             size="sm" 
             disabled={!newMessage.trim() || sending}
-            className="bg-gradient-to-r from-pink-500 to-pink-400 hover:from-pink-600 hover:to-pink-500 text-white rounded-xl px-4 py-3 h-[44px] shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="rounded-xl px-4 py-3 h-[44px] bg-primary hover:bg-primary/90"
           >
             {sending ? (
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
