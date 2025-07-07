@@ -154,7 +154,7 @@ const ChatWindow = ({ chatProfile, onBack }: ChatWindowProps) => {
   return (
     <div className="flex flex-col h-full bg-background">
       {/* Header */}
-      <div className="flex items-center gap-3 p-4 bg-card border-b border-border">
+      <div className="sticky top-0 z-10 flex items-center gap-3 p-4 bg-card border-b border-border">
         <Button 
           variant="ghost" 
           size="sm" 
@@ -223,7 +223,7 @@ const ChatWindow = ({ chatProfile, onBack }: ChatWindowProps) => {
       </div>
 
       {/* Message Input */}
-      <div className="p-4 bg-card border-t border-border">
+      <div className="sticky bottom-0 z-10 p-4 bg-card border-t border-border">
         <form onSubmit={sendMessage} className="flex gap-3 items-end">
           <div className="flex-1">
             <Input
