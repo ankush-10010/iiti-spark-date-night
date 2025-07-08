@@ -5,6 +5,9 @@ import { Session, User } from '@supabase/supabase-js';
 interface Profile {
   id: string;
   username: string;
+  first_name: string;
+  last_name: string;
+  display_name: string;
   gender: string;
   bio: string;
   interests: string[];

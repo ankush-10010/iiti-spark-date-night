@@ -22,6 +22,8 @@ const INTERESTS_OPTIONS = [
 ];
 
 const profileSchema = z.object({
+  first_name: z.string().min(1, "First name is required"),
+  last_name: z.string().min(1, "Last name is required"),
   username: z.string().min(3, "Username must be at least 3 characters"),
   gender: z.enum(["male", "female", "other"], { required_error: "Please select a gender" }),
   bio: z.string().optional(),
@@ -38,6 +40,8 @@ const CreateProfile = () => {
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
   const [uploading, setUploading] = useState(false);
+  const [checkingUsername, setCheckingUsername] = useState(false);
+  const [usernameError, setUsernameError] = useState<string>("");
 
   const { register, handleSubmit, setValue, formState: { errors }, watch } = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema)
@@ -85,8 +89,36 @@ const CreateProfile = () => {
     return data.publicUrl;
   };
 
+  const checkUsernameAvailability = async (username: string) => {
+    if (username.length < 3) return;
+    
+    setCheckingUsername(true);
+    setUsernameError("");
+    
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('username', username)
+        .single();
+
+      if (data) {
+        setUsernameError("Username is already taken");
+      } else if (error && error.code === 'PGRST116') {
+        // No rows returned - username is available
+        setUsernameError("");
+      } else if (error) {
+        console.error('Error checking username:', error);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setCheckingUsername(false);
+    }
+  };
+
   const onSubmit = async (data: ProfileFormData) => {
-    if (!user) return;
+    if (!user || usernameError) return;
 
     setUploading(true);
     
@@ -104,6 +136,8 @@ const CreateProfile = () => {
         .from('profiles')
         .insert({
           id: user.id,
+          first_name: data.first_name,
+          last_name: data.last_name,
           username: data.username,
           gender: data.gender,
           bio: data.bio || '',
@@ -181,6 +215,34 @@ const CreateProfile = () => {
                 </div>
               </div>
 
+              {/* First Name */}
+              <div className="space-y-2">
+                <Label htmlFor="first_name">First Name</Label>
+                <Input
+                  id="first_name"
+                  type="text"
+                  placeholder="Enter your first name"
+                  {...register("first_name")}
+                />
+                {errors.first_name && (
+                  <p className="text-sm text-destructive">{errors.first_name.message}</p>
+                )}
+              </div>
+
+              {/* Last Name */}
+              <div className="space-y-2">
+                <Label htmlFor="last_name">Last Name</Label>
+                <Input
+                  id="last_name"
+                  type="text"
+                  placeholder="Enter your last name"
+                  {...register("last_name")}
+                />
+                {errors.last_name && (
+                  <p className="text-sm text-destructive">{errors.last_name.message}</p>
+                )}
+              </div>
+
               {/* Username */}
               <div className="space-y-2">
                 <Label htmlFor="username">Username</Label>
@@ -189,10 +251,26 @@ const CreateProfile = () => {
                   type="text"
                   placeholder="Choose a unique username"
                   {...register("username")}
+                  onChange={(e) => {
+                    register("username").onChange(e);
+                    checkUsernameAvailability(e.target.value);
+                  }}
                 />
+                {checkingUsername && (
+                  <p className="text-sm text-muted-foreground">Checking availability...</p>
+                )}
+                {usernameError && (
+                  <p className="text-sm text-destructive">{usernameError}</p>
+                )}
+                {!usernameError && !checkingUsername && watch("username") && watch("username").length >= 3 && (
+                  <p className="text-sm text-success">Username is available!</p>
+                )}
                 {errors.username && (
                   <p className="text-sm text-destructive">{errors.username.message}</p>
                 )}
+                <p className="text-sm text-muted-foreground">
+                  This will be used for your profile URL and mentions
+                </p>
               </div>
 
               {/* Gender */}

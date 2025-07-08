@@ -16,6 +16,9 @@ import ChatWindow from "../components/ChatWindow";
 interface Profile {
   id: string;
   username: string;
+  first_name: string;
+  last_name: string;
+  display_name: string;
   gender: string;
   bio: string;
   interests: string[];
@@ -317,9 +320,9 @@ const Home = () => {
                       <AvatarFallback>{match.profile.username[0]}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold truncate">{match.profile.username}</h3>
+                      <h3 className="font-semibold truncate">{match.profile.display_name}</h3>
                       <p className="text-sm text-muted-foreground truncate">
-                        Matched on {new Date(match.created_at).toLocaleDateString()}
+                        @{match.profile.username} • Matched on {new Date(match.created_at).toLocaleDateString()}
                       </p>
                     </div>
                     {chatProfile?.id === match.profile.id && (
@@ -423,7 +426,8 @@ const Home = () => {
                   <CardContent className="p-6">
                     <div className="space-y-4">
                       <div>
-                        <h2 className="text-2xl font-bold">{currentProfile.username}</h2>
+                        <h2 className="text-2xl font-bold">{currentProfile.display_name}</h2>
+                        <p className="text-sm text-muted-foreground">@{currentProfile.username}</p>
                         <p className="text-muted-foreground">
                           Year {currentProfile.year_of_study} • Looking for {currentProfile.looking_for}
                         </p>

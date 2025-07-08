@@ -79,9 +79,12 @@ export type Database = {
         Row: {
           bio: string | null
           created_at: string | null
+          display_name: string
+          first_name: string | null
           gender: string | null
           id: string
           interests: string[] | null
+          last_name: string | null
           looking_for: string | null
           profile_image: string | null
           updated_at: string | null
@@ -91,9 +94,12 @@ export type Database = {
         Insert: {
           bio?: string | null
           created_at?: string | null
+          display_name?: string
+          first_name?: string | null
           gender?: string | null
           id: string
           interests?: string[] | null
+          last_name?: string | null
           looking_for?: string | null
           profile_image?: string | null
           updated_at?: string | null
@@ -103,9 +109,12 @@ export type Database = {
         Update: {
           bio?: string | null
           created_at?: string | null
+          display_name?: string
+          first_name?: string | null
           gender?: string | null
           id?: string
           interests?: string[] | null
+          last_name?: string | null
           looking_for?: string | null
           profile_image?: string | null
           updated_at?: string | null

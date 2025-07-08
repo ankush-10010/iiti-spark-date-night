@@ -19,6 +19,7 @@ interface Message {
 interface ChatProfile {
   id: string;
   username: string;
+  display_name?: string;
   profile_image: string;
 }
 
@@ -170,7 +171,7 @@ const ChatWindow = ({ chatProfile, onBack }: ChatWindowProps) => {
           </AvatarFallback>
         </Avatar>
         <div className="flex-1">
-          <h3 className="font-semibold">{chatProfile.username}</h3>
+          <h3 className="font-semibold">{chatProfile.display_name || chatProfile.username}</h3>
           <p className="text-sm text-muted-foreground">Online</p>
         </div>
         <Button variant="ghost" size="sm" className="rounded-full p-2">
