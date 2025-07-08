@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, X, MessageCircle, Settings, LogOut, Search, Users } from "lucide-react";
+import { Heart, X, MessageCircle, Settings, LogOut, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -47,10 +46,6 @@ const Home = () => {
   const [showMatches, setShowMatches] = useState(false);
   const [chatProfile, setChatProfile] = useState<Profile | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [showSearch, setShowSearch] = useState(false);
-  const [searchResults, setSearchResults] = useState<Profile[]>([]);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [peopleSearchQuery, setPeopleSearchQuery] = useState("");
 
   // Get chat state from URL parameters
   const chatUserId = searchParams.get('chat');
@@ -81,42 +76,7 @@ const Home = () => {
   // Handle URL-based view state
   useEffect(() => {
     setShowMatches(view === 'matches');
-    setShowSearch(view === 'search');
   }, [view]);
-
-  // Search for people
-  useEffect(() => {
-    const searchPeople = async () => {
-      if (!peopleSearchQuery.trim() || peopleSearchQuery.length < 2) {
-        setSearchResults([]);
-        return;
-      }
-
-      setSearchLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .neq('id', user?.id || '')
-          .or(`username.ilike.%${peopleSearchQuery}%,display_name.ilike.%${peopleSearchQuery}%,first_name.ilike.%${peopleSearchQuery}%,last_name.ilike.%${peopleSearchQuery}%`)
-          .limit(20);
-
-        if (error) {
-          console.error('Error searching profiles:', error);
-          return;
-        }
-
-        setSearchResults(data || []);
-      } catch (error) {
-        console.error('Error:', error);
-      } finally {
-        setSearchLoading(false);
-      }
-    };
-
-    const debounceTimer = setTimeout(searchPeople, 300);
-    return () => clearTimeout(debounceTimer);
-  }, [peopleSearchQuery, user?.id]);
 
   const fetchProfiles = async () => {
     if (!user) return;
@@ -263,58 +223,6 @@ const Home = () => {
     setSearchParams(newSearchParams);
   };
 
-  const handleShowSearch = (show: boolean) => {
-    setShowSearch(show);
-    const newSearchParams = new URLSearchParams(searchParams);
-    if (show) {
-      newSearchParams.set('view', 'search');
-    } else {
-      newSearchParams.set('view', 'discover');
-    }
-    // Remove chat parameter when switching views
-    newSearchParams.delete('chat');
-    setSearchParams(newSearchParams);
-  };
-
-  const handleLikeFromSearch = async (targetProfile: Profile) => {
-    if (!user) return;
-
-    try {
-      const { error } = await supabase
-        .from('likes')
-        .insert({
-          from_user: user.id,
-          to_user: targetProfile.id
-        });
-
-      if (error) {
-        console.error('Error liking profile:', error);
-        toast.error('Failed to like profile');
-        return;
-      }
-
-      // Check if it's a match
-      const { data: mutualLike } = await supabase
-        .from('likes')
-        .select('*')
-        .eq('from_user', targetProfile.id)
-        .eq('to_user', user.id)
-        .single();
-
-      if (mutualLike) {
-        toast.success("It's a match! 🎉");
-        fetchMatches(); // Refresh matches
-      } else {
-        toast.success("Like sent!");
-      }
-
-      // Remove from search results
-      setSearchResults(prev => prev.filter(p => p.id !== targetProfile.id));
-    } catch (error) {
-      console.error('Error:', error);
-    }
-  };
-
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate('/landing');
@@ -334,8 +242,8 @@ const Home = () => {
 
   const currentProfile = profiles[currentIndex];
 
-  // Telegram-style layout when matches or search view is active
-  if (showMatches || showSearch) {
+  // Telegram-style layout when matches view is active
+  if (showMatches) {
     return (
       <div className="min-h-screen bg-background flex">
         {/* Left Sidebar - Matches List */}
@@ -372,38 +280,15 @@ const Home = () => {
           {/* Navigation */}
           <div className="flex border-b border-border">
             <Button
-             variant={showMatches && !showSearch ? "default" : "ghost"}
+              variant={showMatches ? "default" : "ghost"}
               className="flex-1 rounded-none"
               onClick={() => handleShowMatches(true)}
             >
               <MessageCircle size={16} className="mr-2" />
               Matches ({matches.length})
             </Button>
-           <Button
-             variant={showSearch ? "default" : "ghost"}
-             className="flex-1 rounded-none"
-             onClick={() => handleShowSearch(true)}
-             className="relative"
-           >
-             <Users size={20} />
-           </Button>
-           <Button
-             variant="ghost"
-             size="sm"
-             onClick={() => handleShowSearch(true)}
-           >
-             <Users size={20} />
-           </Button>
-           <Button
-             variant="ghost"
-             size="sm"
-             onClick={() => handleShowSearch(true)}
-           >
-             <Users size={16} className="mr-2" />
-             Search
-           </Button>
             <Button
-             variant={!showMatches && !showSearch ? "default" : "ghost"}
+              variant={!showMatches ? "default" : "ghost"}
               className="flex-1 rounded-none"
               onClick={() => handleShowMatches(false)}
             >
@@ -411,130 +296,41 @@ const Home = () => {
             </Button>
           </div>
 
-         {/* Content Area */}
+          {/* Matches List */}
           <ScrollArea className="flex-1">
             <div className="p-2">
-             {showSearch ? (
-               <>
-                 {/* Search Input */}
-                 <div className="mb-4">
-                   <div className="relative">
-                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={16} />
-                     <Input
-                       placeholder="Search by name, username..."
-                       value={peopleSearchQuery}
-                       onChange={(e) => setPeopleSearchQuery(e.target.value)}
-                       className="pl-10 bg-muted/50 border-0"
-                     />
-                   </div>
-                 </div>
-
-                 {/* Search Results */}
-                 {searchLoading ? (
-                   <div className="text-center py-8">
-                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                     <p className="text-muted-foreground mt-2">Searching...</p>
-                   </div>
-                 ) : peopleSearchQuery.length < 2 ? (
-                   <div className="text-center py-12">
-                     <Users className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                     <p className="text-muted-foreground">
-                       Enter at least 2 characters to search for people
-                     </p>
-                   </div>
-                 ) : searchResults.length === 0 ? (
-                   <div className="text-center py-12">
-                     <Users className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                     <p className="text-muted-foreground">
-                       No people found matching "{peopleSearchQuery}"
-                     </p>
-                   </div>
-                 ) : (
-                   <div className="space-y-2">
-                     {searchResults.map((person) => (
-                       <Card key={person.id} className="p-4">
-                         <div className="flex items-center gap-3">
-                           <Avatar className="h-12 w-12">
-                             <AvatarImage src={person.profile_image} />
-                             <AvatarFallback>{person.display_name[0]}</AvatarFallback>
-                           </Avatar>
-                           <div className="flex-1 min-w-0">
-                             <h3 className="font-semibold truncate">{person.display_name}</h3>
-                             <p className="text-sm text-muted-foreground truncate">
-                               @{person.username} • Year {person.year_of_study}
-                             </p>
-                             {person.bio && (
-                               <p className="text-xs text-muted-foreground truncate mt-1">
-                                 {person.bio}
-                               </p>
-                             )}
-                           </div>
-                           <Button
-                             size="sm"
-                             variant="outline"
-                             onClick={() => handleLikeFromSearch(person)}
-                             className="shrink-0"
-                           >
-                             <Heart size={16} className="mr-1" />
-                             Like
-                           </Button>
-                         </div>
-                         {person.interests && person.interests.length > 0 && (
-                           <div className="mt-3 flex flex-wrap gap-1">
-                             {person.interests.slice(0, 3).map((interest, index) => (
-                               <Badge key={index} variant="secondary" className="text-xs">
-                                 {interest}
-                               </Badge>
-                             ))}
-                             {person.interests.length > 3 && (
-                               <Badge variant="outline" className="text-xs">
-                                 +{person.interests.length - 3} more
-                               </Badge>
-                             )}
-                           </div>
-                         )}
-                       </Card>
-                     ))}
-                   </div>
-                 )}
-               </>
-             ) : (
-               <>
-                 {/* Matches List */}
-                 {filteredMatches.length === 0 ? (
-                   <div className="text-center py-12">
-                     <MessageCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                     <p className="text-muted-foreground">
-                       {searchQuery ? 'No matches found' : 'No matches yet. Keep swiping!'}
-                     </p>
-                   </div>
-                 ) : (
-                   filteredMatches.map((match) => (
-                     <div
-                       key={match.id}
-                       onClick={() => handleOpenChat(match.profile)}
-                       className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${
-                         chatProfile?.id === match.profile.id ? 'bg-primary/10 border border-primary/20' : ''
-                       }`}
-                     >
-                       <Avatar className="h-12 w-12">
-                         <AvatarImage src={match.profile.profile_image} />
-                         <AvatarFallback>{match.profile.username[0]}</AvatarFallback>
-                       </Avatar>
-                       <div className="flex-1 min-w-0">
-                         <h3 className="font-semibold truncate">{match.profile.display_name}</h3>
-                         <p className="text-sm text-muted-foreground truncate">
-                           @{match.profile.username} • Matched on {new Date(match.created_at).toLocaleDateString()}
-                         </p>
-                       </div>
-                       {chatProfile?.id === match.profile.id && (
-                         <div className="w-2 h-2 bg-primary rounded-full"></div>
-                       )}
-                     </div>
-                   ))
-                 )}
-               </>
-             )}
+              {filteredMatches.length === 0 ? (
+                <div className="text-center py-12">
+                  <MessageCircle className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground">
+                    {searchQuery ? 'No matches found' : 'No matches yet. Keep swiping!'}
+                  </p>
+                </div>
+              ) : (
+                filteredMatches.map((match) => (
+                  <div
+                    key={match.id}
+                    onClick={() => handleOpenChat(match.profile)}
+                    className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors hover:bg-muted/50 ${
+                      chatProfile?.id === match.profile.id ? 'bg-primary/10 border border-primary/20' : ''
+                    }`}
+                  >
+                    <Avatar className="h-12 w-12">
+                      <AvatarImage src={match.profile.profile_image} />
+                      <AvatarFallback>{match.profile.username[0]}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold truncate">{match.profile.display_name}</h3>
+                      <p className="text-sm text-muted-foreground truncate">
+                        @{match.profile.username} • Matched on {new Date(match.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    {chatProfile?.id === match.profile.id && (
+                      <div className="w-2 h-2 bg-primary rounded-full"></div>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
           </ScrollArea>
         </div>
@@ -546,7 +342,6 @@ const Home = () => {
               chatProfile={{
                 id: chatProfile.id,
                 username: chatProfile.username,
-               display_name: chatProfile.display_name,
                 profile_image: chatProfile.profile_image,
               }}
               onBack={handleCloseChat}
