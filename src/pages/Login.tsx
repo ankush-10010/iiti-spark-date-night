@@ -13,20 +13,40 @@ const Login = () => {
     email: '',
     password: ''
   });
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { error } = await supabase.auth.signInWithPassword({
-      email: formData.email,
-      password: formData.password,
-    });
+    
+    setIsLoading(true);
+    
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
 
-    if (error) {
-      toast.error(error.message);
-    } else {
-      toast.success("Login successful!");
-      navigate("/");
+      if (error) {
+        // Handle specific error cases
+        if (error.message.includes('Invalid login credentials')) {
+          toast.error("Invalid email or password. Please check your credentials and try again.");
+        } else if (error.message.includes('Email not confirmed')) {
+          toast.error("Please check your email and click the confirmation link before logging in.");
+        } else if (error.message.includes('Too many requests')) {
+          toast.error("Too many login attempts. Please wait a moment before trying again.");
+        } else {
+          toast.error(error.message);
+        }
+      } else {
+        toast.success("Login successful!");
+        navigate("/");
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error("An unexpected error occurred. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -83,8 +103,8 @@ const Login = () => {
                 </Link>
               </div>
 
-              <Button type="submit" variant="hero" className="w-full">
-                Sign In
+              <Button type="submit" variant="hero" className="w-full" disabled={isLoading}>
+                {isLoading ? "Signing In..." : "Sign In"}
               </Button>
             </form>
 

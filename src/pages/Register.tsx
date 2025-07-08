@@ -15,34 +15,97 @@ const Register = () => {
     password: '',
     confirmPassword: ''
   });
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
+  const checkUserExists = async (email: string) => {
+    try {
+      // Check if user exists in auth.users by attempting to sign in with a dummy password
+      // This is a workaround since Supabase doesn't provide a direct way to check user existence
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: 'dummy-password-check'
+      });
+      
+      // If error is "Invalid login credentials", user exists but password is wrong
+      // If error is "Email not confirmed", user exists but hasn't confirmed email
+      // If error is something else, we assume user doesn't exist
+      if (error) {
+        if (error.message.includes('Invalid login credentials') || 
+            error.message.includes('Email not confirmed') ||
+            error.message.includes('Email link is invalid or has expired')) {
+          return true; // User exists
+        }
+      }
+      
+      return false; // User doesn't exist
+    } catch (error) {
+      console.error('Error checking user existence:', error);
+      return false;
+    }
+  };
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (formData.password !== formData.confirmPassword) {
-      toast.error("Passwords do not match");
-      return;
-    }
-    if (!formData.email.endsWith("@iiti.ac.in")) {
-      toast.error("Please use your IIT Indore email to register.");
-      return;
-    }
+    
+    setIsLoading(true);
+    
+    try {
+      // Validate form data
+      if (formData.password !== formData.confirmPassword) {
+        toast.error("Passwords do not match");
+        return;
+      }
+      
+      if (!formData.email.endsWith("@iiti.ac.in")) {
+        toast.error("Please use your IIT Indore email to register.");
+        return;
+      }
 
-    const { error } = await supabase.auth.signUp({
-      email: formData.email,
-      password: formData.password,
-      options: {
-        data: {
-          username: formData.username,
+      // Check if user already exists
+      const userExists = await checkUserExists(formData.email);
+      
+      if (userExists) {
+        toast.error("An account with this email already exists. Please try logging in instead.", {
+          action: {
+            label: "Go to Login",
+            onClick: () => navigate("/login")
+          }
+        });
+        return;
+      }
+
+      // Proceed with registration
+      const { error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            username: formData.username,
+          },
         },
-      },
-    });
+      });
 
-    if (error) {
-      toast.error(error.message);
-    } else {
-      toast.success("Registration successful! Please check your email to verify your account.");
-      navigate("/login");
+      if (error) {
+        // Handle specific error cases
+        if (error.message.includes('User already registered')) {
+          toast.error("An account with this email already exists. Please try logging in instead.", {
+            action: {
+              label: "Go to Login",
+              onClick: () => navigate("/login")
+            }
+          });
+        } else {
+          toast.error(error.message);
+        }
+      } else {
+        toast.success("Registration successful! Please check your email to verify your account.");
+        navigate("/login");
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      toast.error("An unexpected error occurred. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -120,8 +183,8 @@ const Register = () => {
                 />
               </div>
 
-              <Button type="submit" variant="hero" className="w-full">
-                Create Account
+              <Button type="submit" variant="hero" className="w-full" disabled={isLoading}>
+                {isLoading ? "Creating Account..." : "Create Account"}
               </Button>
             </form>
 
